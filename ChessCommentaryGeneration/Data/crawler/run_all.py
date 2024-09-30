@@ -1,29 +1,44 @@
+import concurrent.futures
 import pickle
-import sys
 import subprocess
-import os
-import time
-from subprocess import call
+import sys
 
-processes = set()
-command = 'python classify.py'
-max_processes = int(sys.argv[3])
+# Constants
+COMMAND = 'python classify.py'
+MAX_PROCESSES = int(sys.argv[3])
+START = int(sys.argv[1])
+END = int(sys.argv[2])
 
-start = int(sys.argv[1])
-end =   int(sys.argv[2])
+# Load links
+with open("./saved_files/saved_links.p", "rb") as f:
+    all_links = pickle.load(f)
 
-all_links = pickle.load( open("./saved_files/saved_links.p", "r") )
-extra_links = pickle.load( open("extra_pages.p", "r") )
-for i, link in enumerate(all_links):
-	if i<start: continue
-	if i>end: break
-	num = extra_links[i]
-	print("i,num: ",i,num) # 0 is no extra, if extra then (num-1) extra pages
-	for j in range(0,num): # j=0 is the home page. Begin range from 0 if home page is to be included.
-		print(j)
-		processes.add( subprocess.Popen(["python", "save_rendered_webpage.py", "-i", str(i), "-num", str(j) ]) )
-		if len(processes) >= max_processes:
-			print("=========== Waiting")
-			os.wait()
-			print("========== Waiting ends")
-			processes.difference_update([p for p in processes if p.poll() is not None])
+with open("./extra_pages.p", "rb") as f:
+    extra_links = pickle.load(f)
+
+
+def run_process(i, j):
+    """Function to run the subprocess for each (i, j) pair."""
+    subprocess.run(["python", "save_rendered_webpage.py", "-i", str(i), "-num", str(j)])
+
+
+def main():
+    with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PROCESSES) as executor:
+        futures = []
+        for i, link in enumerate(all_links):
+            if i < START:
+                continue
+            if i > END:
+                break
+            num = extra_links[i]
+            print(f"i, num: {i}, {num}")
+            for j in range(num):
+                print(j)
+                futures.append(executor.submit(run_process, i, j))
+
+        # Wait for all futures to complete (blocks until done)
+        concurrent.futures.wait(futures)
+
+
+if __name__ == "__main__":
+    main()

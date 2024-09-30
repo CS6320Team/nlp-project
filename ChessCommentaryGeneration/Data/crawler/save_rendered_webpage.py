@@ -1,101 +1,60 @@
-
-import sys  
-from PyQt4.QtGui import *  
-from PyQt4.QtCore import *  
-from PyQt4.QtWebKit import *  
-from lxml import html 
-import pickle
-import time
-from PyQt4 import QtGui, QtCore
-import functools
-import sys
-
-
 import argparse
-def parseArguments():
+import pickle
+import sys
+import time
+
+from PyQt5.QtCore import QUrl
+from PyQt5.QtWebEngineWidgets import QWebEnginePage
+from PyQt5.QtWidgets import QApplication
+
+
+def parse_arguments():
     parser = argparse.ArgumentParser()
-    #parser.add_argument("-typ", dest="typ", help="home or subsequent", default='home')
-    parser.add_argument("-i", type=int, dest="i", help="i")
-    parser.add_argument("-num", type=int, dest="num", help="num")
-    args = parser.parse_args()  
+    parser.add_argument("-i", type=int, dest="i", help="Index of the link")
+    parser.add_argument("-num", type=int, dest="num", help="Page number")
+    args = parser.parse_args()
     return args
-params = parseArguments()
-#typ = params.typ
 
 
-#Take this class for granted.Just use result of rendering.
-class Render(QWebPage):  
-  def __init__(self, url):  
-	self.app = QApplication(sys.argv)  
-	QWebPage.__init__(self)  
-	self.loadFinished.connect(self._loadFinished)  
-	qurl = QUrl(url)
-	func = functools.partial(self.mainFrame().load, qurl )  
-	timer = QtCore.QTimer()
-	timer.timeout.connect(func)
-	timer.start(10000)
-	self.app.exec_()  
-  
-  def _loadFinished(self, result):  
-	self.frame = self.mainFrame()  
-	self.app.quit()  
+class Render(QWebEnginePage):
+    def __init__(self, url):
+        self.app = QApplication(sys.argv)
+        super().__init__(self.app)
+        self.html = ""
+        self.loadFinished.connect(self._load_finished)
+        self.load(QUrl(url))
+        self.app.exec_()
+
+    def _load_finished(self):
+        self.toHtml(self._callable)
+
+    def _callable(self, data):
+        self.html = data
+        self.app.quit()
+
 
 def save_all():
-	global cur_url
-	global html_doc
-	all_links = pickle.load( open("./saved_files/saved_links.p", "r") )
-	#extra_links = pickle.load( open("extra_pages.p", "r") )
-	print("len(all_links) = ",len(all_links))
-	num = sys.argv[1]
+    args = parse_arguments()
+    all_links = pickle.load(open("./saved_files/saved_links.p", "rb"))
+    i = args.i
+    num = args.num
+    url = all_links[i]
+    if num != 0:
+        url += "&pg=" + str(num)
+    print(f"i, url = {i}, {url}")
 
-	i = params.i
-	print("i = ",type(i))
-	num = params.num
-	url = all_links[i]
-	if num!=0:
-		url+="&pg="+str(num)
-	print("i, url = ",i,url)
-	#This step is important.Converting QString to Ascii for lxml to process
-	#archive_links = html.fromstring(str(result.toAscii()))
-	
-	cur_url = url
-	error_count = 0
-	try:
-		r = Render(cur_url)
-		result = r.frame.toHtml()
-		html_doc = result.toAscii()
-		
-		if num==0:
-			fw = open("./saved_files/saved"+str(i)+".html", "w")
-		else:
-			fw = open("./saved_files/saved"+str(i)+"_" + str(num) + ".html", "w")
-		fw.write(html_doc)
-		fw.close()
-		print("---- SLEEPING ---- ")
-		time.sleep(10)
-	except:
-		print("ERROR!!")
-		error_count+=1
-		print("error_count = ",error_count)
-	##if i>4:
-	##	break
+    try:
+        r = Render(url)
+        html_doc = r.html
+        file_name = f"./saved_files/saved{i}.html" if num == 0 else f"./saved_files/saved{i}_{num}.html"
+        with open(file_name, "w", encoding="utf-8") as fw:
+            fw.write(html_doc)
+        print("---- SLEEPING ----")
+        time.sleep(10)
+    except Exception as e:
+        print("ERROR!!")
+        print(f"Exception: {e}")
 
-if __name__=="__main__":
-	save_all()
 
-'''
-s = "https://gameknot.com/annotation.pl/fierce-queen-taking-spanish-easy?gm=63368"
-
-url = 'http://pycoders.com/archive/'  
-url = s
-r = Render(url)  
-result = r.frame.toHtml()
-#This step is important.Converting QString to Ascii for lxml to process
-archive_links = html.fromstring(str(result.toAscii()))
-print archive_links
-print "---------"
-print result.toAscii()
-print "======================================"
-print result
-
-'''
+if __name__ == "__main__":
+    save_all()
