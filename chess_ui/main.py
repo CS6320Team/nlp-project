@@ -7,13 +7,14 @@ from PyQt6.QtCore import QTimer
 import chess
 import chess.svg
 
+
 class ChessPuzzleApp(QWidget):
     def __init__(self, puzzles_df):
         super().__init__()
         self.puzzles_df = puzzles_df
         self.current_move_index = 0
-        self.move_history = []  #store correct move sequence
-        self.current_history_index = 0  #keep track of where the user is in the move sequence
+        self.move_history = []  # store correct move sequence
+        self.current_history_index = 0  # keep track of where the user is in the move sequence
         self.last_move = None  # Track the last move for highlighting
         self.load_random_puzzle()
         self.initUI()
@@ -48,7 +49,7 @@ class ChessPuzzleApp(QWidget):
         layout.addWidget(self.turn_label)
 
         button_layout = QHBoxLayout()
-        
+
         # Back button
         self.back_button = QPushButton("Back")
         self.back_button.setEnabled(False)  # Disabled initially because no moves to go back to
@@ -85,7 +86,8 @@ class ChessPuzzleApp(QWidget):
     def update_board(self):
         # Highlight the last move, if any
         if self.last_move:
-            svg_data = chess.svg.board(self.board, orientation=self.orientation, lastmove=self.last_move).encode('utf-8')
+            svg_data = chess.svg.board(self.board, orientation=self.orientation, lastmove=self.last_move).encode(
+                'utf-8')
         else:
             svg_data = chess.svg.board(self.board, orientation=self.orientation).encode('utf-8')
         self.svg_widget.load(svg_data)
@@ -193,6 +195,7 @@ class ChessPuzzleApp(QWidget):
         self.forward_button.setEnabled(False)
 
         QTimer.singleShot(1000, self.computer_move)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
