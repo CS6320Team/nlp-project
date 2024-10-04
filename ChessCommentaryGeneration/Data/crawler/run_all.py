@@ -1,7 +1,8 @@
 import concurrent.futures
 import pickle
-import subprocess
 import sys
+
+import save_rendered_webpage
 
 # Constants
 COMMAND = 'python classify.py'
@@ -17,11 +18,6 @@ with open("./extra_pages.p", "rb") as f:
     extra_links = pickle.load(f)
 
 
-def run_process(i, j):
-    """Function to run the subprocess for each (i, j) pair."""
-    subprocess.run(["python", "save_rendered_webpage.py", "-i", str(i), "-num", str(j)])
-
-
 def main():
     with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PROCESSES) as executor:
         futures = []
@@ -34,7 +30,7 @@ def main():
             print(f"i, num: {i}, {num}")
             for j in range(num):
                 print(j)
-                futures.append(executor.submit(run_process, i, j))
+                futures.append(executor.submit(save_rendered_webpage.save_all, i, j))
 
         # Wait for all futures to complete (blocks until done)
         concurrent.futures.wait(futures)

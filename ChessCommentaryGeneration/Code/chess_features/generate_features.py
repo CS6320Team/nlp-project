@@ -15,13 +15,13 @@ from . import generate_move_features
 
 
 def main():
-
-    src_dir = sys.argv[1] # ./data/  ##data directory
-    src = sys.argv[2] # "train.che-eng.0"  ## data file name
-    #typ = sys.argv[3] # score ## save using this name
+    src_dir = sys.argv[1]  # ./data/  ##data directory
+    src = sys.argv[2]  # "train.che-eng.0"  ## data file name
+    # typ = sys.argv[3] # score ## save using this name
 
     generate_score_features.main(src_dir, src, "score")
     generate_threat_features.main(src_dir, src, "threat")
     generate_move_features.main(src_dir, src, "move")
+
 
 main()
