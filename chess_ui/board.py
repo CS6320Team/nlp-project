@@ -6,13 +6,20 @@ from PyQt6.QtSvgWidgets import QSvgWidget
 from PyQt6.QtCore import QTimer
 import chess
 import chess.svg
+from stockfish import Stockfish
 
-#using stockfish and maia should be the same, just diff bots, perhaps have diff command line argument
+"""
+POTENTIAL ADDITIONS
+togglable eval bar for playing against an engine, and eventually, when reviewing a position
+move history on the (right?) side for playing against an engine, and analysis
+chat bot box on the (left?) side
+"""
+
+#using stockfish and maia should be the same, just diff bots, perhaps have diff command line argument, prob no need for maia if we can set stockfish elo, wont b as human like but f it
 #possibly have something that says check if user or comp is in check
 #after a puzzle, allow user to see what traits are
 #or sort puzzles by traits
 #"i want to train on opening puzzles"
-#add stockfish eval bar??
 
 #holy moly puzzles are working
 #engine should be ez, the majority of logic is in puzzles
@@ -47,11 +54,16 @@ class ChessApp(QWidget):
         self.orientation = chess.BLACK if self.is_white_to_move else chess.WHITE
 
     def start_bot_game(self): #change this later to start at a random color
+                
+        sf = Stockfish(path = "C:\\Users\\wei0c\\Desktop\\school\\7-1\\CS-6320-NLP\\stockfish\\stockfish-windows-x86-64-avx2.exe", depth = 10, parameters ={"Hash": 2048, "UCI_Elo": "1800", "Threads": 2, "Minimum Thinking Time": 3, "UCI_Chess960": "false"})
         self.board = chess.Board()
         self.last_move = None
         self.is_white_to_move = True
         self.orientation = chess.WHITE
-        self.engine = chess.engine.SimpleEngine.popen_uci("path/to/stockfish")  # Change this to your Stockfish path
+        self.move_history = []
+        #self.engine = chess.engine.SimpleEngine.popen_uci("path/to/stockfish")  # Change this to your Stockfish path
+        self.engine = sf  # Change this to your Stockfish path
+
 
     def initUI(self):
         self.setWindowTitle("Chess Game" if self.mode == "bot" else "Chess Puzzle")
@@ -186,15 +198,21 @@ class ChessApp(QWidget):
             self.turn_label.setText(self.get_turn_message())
             self.current_move_index += 1
 
+    #gotta fix like all of this hehehe
     def engine_move(self): #fix this later, we ensure puzzle works, load up a maia or stockfish
         if not self.is_white_to_move:
-            result = self.engine.play(self.board, chess.engine.Limit(time=1.0)) #time can change here
-            self.board.push(result.move)
-            self.last_move = result.move
+            self.engine.set_position(self.move_history)
+            result = self.engine.get_best_move_time(3000)
+            move = self.board.parse_san(result)
+            self.move_history.append(move)
+            self.board.push(move)
+            self.last_move = move
             self.update_board()
-
+            self.current_history_index = len(self.move_history)
+            self.back_button.setEnabled(True)
             self.is_white_to_move = not self.is_white_to_move
             self.turn_label.setText(self.get_turn_message())
+            self.current_move_index += 1
 
             if self.board.is_game_over():
                 self.move_label.setText("Game over!")
