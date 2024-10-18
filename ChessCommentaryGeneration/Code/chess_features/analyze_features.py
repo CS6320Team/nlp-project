@@ -1,14 +1,11 @@
 import pickle
-# coding: utf-8
 
-# In[1]:
-
-import sys
-from .convertToFEN import convertToFEN
-import chess
-import chess.uci
 import numpy as np
 import scipy.stats
+
+
+# coding: utf-8
+# In[1]:
 
 
 def main():
