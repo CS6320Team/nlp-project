@@ -1,17 +1,12 @@
-import pickle
 # coding: utf-8
 
 # In[1]:
 
 import sys
-from .convertToFEN import convertToFEN
-import chess
-import chess.uci
-import numpy as np
 
+from . import generate_move_features
 from . import generate_score_features
 from . import generate_threat_features
-from . import generate_move_features
 
 
 def main():

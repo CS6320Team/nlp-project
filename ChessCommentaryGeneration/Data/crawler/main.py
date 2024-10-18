@@ -168,9 +168,11 @@ class DataCollector:
                     td_res = result.findAll("td", recursive=False)
                     td = td_res[0]  ## move+board
                     ##--- Extract moves
-                    txt = td.get_text()
-                    txt = unicodedata.normalize('NFKD', txt).encode('ascii', 'ignore')
-                    moves = txt[:txt.find("<!--")].strip()
+                    txt = (unicodedata.normalize('NFKD', td.get_text())
+                           .encode('ascii', 'ignore')
+                           .decode('utf-8'))
+                    comment_start = txt.find('<!--')
+                    moves = txt[:comment_start].strip() if comment_start != -1 else txt.strip()
                     ##--- Extract board elements
                     board_element_vals = self._getBoardValues(result)
                     board_element_info = self._boardCellToInfo(board_element_vals)

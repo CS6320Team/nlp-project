@@ -1,20 +1,12 @@
 # coding: utf-8
 import pickle
 
-####
-
-
-####
-
-
-# In[1]:
-
-import sys
-from .convertToFEN import convertToFEN
 # from boardInfo import BoardInfo
-import chess
-import chess.uci
 import numpy as np
+
+####
+####
+# In[1]:
 
 ####################################################### chess utils
 '''
