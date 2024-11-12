@@ -42,14 +42,51 @@ class ChessApp(QWidget):
         self.initUI()
 
     def start_analysis(self):
-        game_notation = input("Paste the notation of your game here:\n")
+        game_san_notation = input("Paste the notation (in SAN) of your game here:\n")
         sf = Stockfish(path = "C:\\Users\\wei0c\\Desktop\\school\\7-1\\CS-6320-NLP\\stockfish\\stockfish-windows-x86-64-avx2.exe", depth = 15, parameters ={"Hash": 2048, "Skill Level": 20, "Threads": 2, "Minimum Thinking Time": 3, "UCI_Chess960": "false"})
         self.board = chess.Board()
         self.last_move = None
         self.is_white_to_move = True
-        self.orientation = chess.WHITE
-        self.move_history = game_notation.split(" ")
+        side = input("W if you were white, B for black:\n") #a logic doesnt work yet   do some shit later that allows for , A to analyze moves on both sides
+        self.orientation = chess.WHITE if side == "W" else chess.BLACK
+        self.move_history = game_san_notation.split(" ") #this is in SAN, python chess uses SAN, stickfish uses UCI
         self.engine = sf
+        #have to only get blunders of the user, not the opponent
+        uci_notation = []
+        for san in self.move_history:
+            move = self.board.parse_san(san)
+            uci_move = move.uci()
+            print(uci_move)
+            self.board.push(move)
+            uci_notation.append(uci_move)
+        curr_moves = []
+        #now we look at blunders
+        blunders = []
+        for x in range(len(uci_notation)):
+            curr_eval = self.engine.get_evaluation()
+            if side == "W":
+                if x % 2 == 1: #skip analysis of black's moves
+                    curr_moves.append(uci_notation[x])
+                    self.engine.set_position(curr_moves)
+                    continue
+            elif x % 2 == 0: #skip analysis of white's moves
+                curr_moves.append(uci_notation[x])
+                self.engine.set_position(curr_moves)
+                continue
+            best_move = self.engine.get_best_move()
+            curr_moves.append(best_move)
+            best_move_eval = self.engine.get_evaluation()
+            curr_best_move_eval = [best_move_eval["type"], best_move_eval["value"]]
+            curr_moves.pop()
+            curr_moves.append(uci_notation[x])
+            self.engine.set_position(curr_moves)
+            curr_eval = self.engine.get_evaluation()
+            player_move_eval = [curr_eval["type"], curr_eval["value"]]
+            player_move_eval = [curr_eval["type"], curr_eval["value"]]
+            if curr_best_move_eval[0] != player_move_eval[0]:
+                blunders.append([uci_notation[x], x])
+            elif abs(curr_best_move_eval[1] - player_move_eval[1]) > 150:
+                blunders.append([uci_notation[x], x])
 
     def load_random_puzzle(self): #eventually sort by elo, let user report elo to start
         idx = random.randint(0, len(self.puzzles_df) - 1)
@@ -72,8 +109,7 @@ class ChessApp(QWidget):
         self.is_white_to_move = True
         self.orientation = chess.WHITE
         self.move_history = []
-        #self.engine = chess.engine.SimpleEngine.popen_uci("path/to/stockfish")  # Change this to your Stockfish path
-        self.engine = sf  # Change this to your Stockfish path
+        self.engine = sf  
 
 
     def initUI(self):
