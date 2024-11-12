@@ -11,8 +11,7 @@ from stockfish import Stockfish
 """
 POTENTIAL ADDITIONS
 togglable eval bar for playing against an engine, and eventually, when reviewing a position
-move history on the (right?) side for playing against an engine, and analysis
-chat bot box on the (left?) side
+
 """
 
 #using stockfish and maia should be the same, just diff bots, perhaps have diff command line argument, prob no need for maia if we can set stockfish elo, wont b as human like but f it
@@ -36,9 +35,21 @@ class ChessApp(QWidget):
         self.engine = None
         if mode == "bot":
             self.start_bot_game()
+        elif mode == "analysis":
+            self.start_analysis()
         else:
             self.load_random_puzzle()
         self.initUI()
+
+    def start_analysis(self):
+        game_notation = input("Paste the notation of your game here:\n")
+        sf = Stockfish(path = "C:\\Users\\wei0c\\Desktop\\school\\7-1\\CS-6320-NLP\\stockfish\\stockfish-windows-x86-64-avx2.exe", depth = 15, parameters ={"Hash": 2048, "Skill Level": 20, "Threads": 2, "Minimum Thinking Time": 3, "UCI_Chess960": "false"})
+        self.board = chess.Board()
+        self.last_move = None
+        self.is_white_to_move = True
+        self.orientation = chess.WHITE
+        self.move_history = game_notation.split(" ")
+        self.engine = sf
 
     def load_random_puzzle(self): #eventually sort by elo, let user report elo to start
         idx = random.randint(0, len(self.puzzles_df) - 1)
@@ -198,8 +209,7 @@ class ChessApp(QWidget):
             self.turn_label.setText(self.get_turn_message())
             self.current_move_index += 1
 
-    #gotta fix like all of this hehehe
-    def engine_move(self): #fix this later, we ensure puzzle works, load up a maia or stockfish
+    def engine_move(self): 
         if not self.is_white_to_move:
             self.engine.set_position(self.move_history)
             result = self.engine.get_best_move_time(3000)
