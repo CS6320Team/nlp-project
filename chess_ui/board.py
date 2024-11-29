@@ -440,13 +440,13 @@ class ChessApp(QWidget):
         )
 
 
-    def get_llm_response(self, question): #placeholder
+    def get_llm_response(self, question, context): #placeholder
         import openai
         openai.api_key = open("C:\\Users\\wei0c\\Desktop\\school\\7-1\\CS-6320-NLP\\chess_ui\\openai_key.txt", "r").read()
-        messages = [{"role": "system", "content": "You are a chess coach..... more filler"}]
+        messages = [{"role": "system", "content": context}]
         messages.append({"role": "user", "content": question})
         response = openai.chat.completions.create(
-                    model="gpt-4omini",
+                    model="gpt-4o-mini",
                     messages=messages
                 )
         return response.choices[0].message.content
