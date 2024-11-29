@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-import pickle
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -9,11 +9,12 @@ import yaml
 from playwright.async_api import async_playwright
 
 # Configure logging
+os.mkdir("./logs")
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('scraper.log'),
+        logging.FileHandler('./logs/scraper.log'),
         logging.StreamHandler()
     ]
 )
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 class Scraper:
     def __init__(self, config_path: str):
         self.config = self.load_config(config_path)
-        self.output_dir = Path(self.config['output_dir'])
+        self.output_dir = Path(self.config['scrape_output_dir'])
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Status tracking
@@ -95,30 +96,27 @@ class Scraper:
                 await page.close()
                 await asyncio.sleep(self.config['request_delay'])
 
-    def load_urls(self) -> tuple:
-        """Load URLs and extra pages count from saved files."""
-        with open(self.config['saved_links_path'], 'rb') as f:
-            all_urls = pickle.load(f)
-
-        with open(self.config['extra_pages_path'], 'rb') as f:
-            extra_pages = pickle.load(f)
-
-        assert len(all_urls) == len(extra_pages), "URLs and extra pages lists must be of the same size"
-
-        return all_urls, extra_pages
+    def load_urls(self) -> dict[str, int]:
+        """Load URLs from saved files."""
+        try:
+            with open(self.config['saved_links_path'], 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return {}
 
     async def run(self):
         try:
             logger.info("Starting scraper...")
 
             # Load URLs
-            all_urls, extra_pages = self.load_urls()
-            logger.info(f"Loaded {len(all_urls)} URLs")
+            links = list(self.load_urls().items())
+            logger.info(f"Loaded {len(links)} URLs")
 
             # Get URL slice based on index range
             start_idx = max(self.status['last_index'], self.config['start_index'])
-            end_idx = min(self.config['end_index'], len(all_urls)) if self.config['end_index'] else len(all_urls)
+            end_idx = min(self.config['end_index'], len(links)) if self.config['end_index'] else len(links)
             logger.info(f"Processing URLs from index {start_idx} to {end_idx}")
+            game_url = self.config['game_url']
 
             async with async_playwright() as p:
                 browser = await p.chromium.launch(
@@ -140,8 +138,9 @@ class Scraper:
 
                 tasks = []
                 for i in range(start_idx, end_idx):
-                    for page_num in range(extra_pages[i] + 1):
-                        page_url = f"{all_urls[i].strip()}&pg={page_num}"
+                    url, page_count = links[i]
+                    for page_num in range(page_count):
+                        page_url = f"{game_url}/{url}&pg={page_num}"
                         saved_name = f"saved{i}_{page_num}"
                         tasks.append(bounded_scrape(page_url, i, saved_name))
 
@@ -161,7 +160,7 @@ class Scraper:
 
 
 async def main():
-    scraper = Scraper('config.yaml')
+    scraper = Scraper('./config.yaml')
     await scraper.run()
 
 

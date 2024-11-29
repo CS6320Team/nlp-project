@@ -1,0 +1,34 @@
+# URL settings
+root_url: "https://gameknot.com"
+annotations_url: "https://gameknot.com/list_annotated.pl?u=all"
+game_url: "https://gameknot.com/annotation.pl"
+
+# Input/Output paths
+preprocess_output_dir: "./preprocessed_files"
+scrape_output_dir: "./saved_files"
+parse_output_dir: "./parsed_files"
+parse_error_path: "./parsed_files/parse_errors.txt"
+saved_links_path: "./init_data/links.json"
+split_data_path: "./init_data/split_data.json"
+start_state_path: "./init_data/start_state.json"
+
+# Index control
+start_index: 0  # Start from this index in URL list
+end_index:    # End at this index
+
+# Resuming settings
+resume_enabled: true  # Whether to resume from last saved position
+save_frequency: 100  # Save progress every N URLs
+
+# Concurrency settings
+max_concurrent: 5  # Maximum number of concurrent pages to load
+
+# Timing settings
+page_timeout: 30  # Maximum time to wait for page load (s)
+render_wait: 5  # Time to wait for page render (s)
+request_delay: 1  # Delay between requests (s)
+
+# Training Settings
+train_ratio: 0.7
+val_ratio: 0.1
+random_seed: 42
