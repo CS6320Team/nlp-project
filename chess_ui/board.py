@@ -48,7 +48,7 @@ class ChessApp(QWidget):
                 self.move_history = self.parse_raw_san(user_input)
                 self.awaiting_game_notation = False
                 self.awaiting_orientation = True
-                return
+                #return
             if self.awaiting_orientation:
                 if user_input.upper() not in ("W", "B"):
                     self.add_to_chat("Coach", "Please enter W for White or B for Black.")
@@ -58,7 +58,7 @@ class ChessApp(QWidget):
                 self.add_to_chat("Coach", "Starting analysis...")
                 self.awaiting_orientation = False
                 threading.Thread(target=self.prepare_analysis).start()
-                return
+                #return
 
             if self.awaiting_best_move:
                 user_move = user_input.strip()
