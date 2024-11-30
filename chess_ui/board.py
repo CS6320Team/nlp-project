@@ -63,7 +63,7 @@ class ChessApp(QWidget):
             if self.awaiting_best_move:
                 user_move = user_input.strip()
                 if user_move.lower() == "answer":
-                    self.add_to_chat("Coach", f"Correct! Good job finding the best move!")
+                    self.add_to_chat("Coach","best move :"+str(self.curr_best_move))
                     self.awaiting_best_move = False
                     #threading.Thread(target=self.continue_analysis).start()
                     threading.Thread(target=self.analysis_walkthrough).start()
@@ -85,7 +85,8 @@ class ChessApp(QWidget):
 
     def prepare_analysis(self):
         self.engine = Stockfish(
-            path="C:\\Users\\wei0c\\Desktop\\school\\7-1\\CS-6320-NLP\\stockfish\\stockfish-windows-x86-64-avx2.exe",
+            path=r"C:\Users\Sujay\Downloads\stockfish-windows-x86-64-avx2\stockfish\stockfish-windows-x86-64-avx2.exe",
+            #"C:\\Users\\wei0c\\Desktop\\school\\7-1\\CS-6320-NLP\\stockfish\\stockfish-windows-x86-64-avx2.exe",
             depth=15,
             parameters={"Hash": 2048, "Skill Level": 20, "Threads": 3, "Minimum Thinking Time": 4, "UCI_Chess960": "false"}
         )
@@ -142,7 +143,8 @@ class ChessApp(QWidget):
     def start_bot_game(self):
         self.white = random.randint(0, 10) % 2
         self.engine = Stockfish(
-            path="C:\\Users\\wei0c\\Desktop\\school\\7-1\\CS-6320-NLP\\stockfish\\stockfish-windows-x86-64-avx2.exe",
+            path=r"C:\Users\Sujay\Downloads\stockfish-windows-x86-64-avx2\stockfish\stockfish-windows-x86-64-avx2.exe",
+                 #"C:\\Users\\wei0c\\Desktop\\school\\7-1\\CS-6320-NLP\\stockfish\\stockfish-windows-x86-64-avx2.exe",
             depth=10,
             parameters={"Hash": 2048, "UCI_Elo": "1800", "Threads": 2, "Minimum Thinking Time": 3, "UCI_Chess960": "false"}
         )
