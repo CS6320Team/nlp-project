@@ -1,6 +1,6 @@
 import pandas as pd
 import random
-import sys
+import threading
 from PyQt6.QtWidgets import (QApplication, QVBoxLayout, QWidget, QLabel, QPushButton, QHBoxLayout, QTextEdit, QScrollArea, QFrame, QListWidget)
 from PyQt6.QtSvgWidgets import QSvgWidget
 from PyQt6.QtCore import QTimer, Qt
@@ -12,28 +12,28 @@ import time
 class ChessApp(QWidget):
     def __init__(self, puzzles_df=None, mode="puzzle"):
         super().__init__()
-        self.mode = mode 
+        self.mode = mode
         self.puzzles_df = puzzles_df
         self.current_move_index = 0
         self.move_history = []
         self.current_history_index = 0
         self.last_move = None
-        #self.board = chess.Board()
         self.engine = None
-        
+        self.thread_lock = threading.Lock()
+
         if mode == "bot":
             self.start_bot_game()
         elif mode == "analysis":
             self.start_analysis()
         else:
             self.load_random_puzzle()
+
         self.initUI()
-        
+
     def start_analysis(self):
-        # Initialize Stockfish and board
         self.board = chess.Board()
         self.is_white_to_move = True
-        self.orientation = chess.WHITE #this changes later when you actually start
+        self.orientation = chess.WHITE
         self.awaiting_game_notation = True
         self.awaiting_orientation = True
         self.awaiting_best_move = False
@@ -45,83 +45,69 @@ class ChessApp(QWidget):
     def handle_chat_input(self, user_input):
         if self.mode == "analysis":
             if self.awaiting_game_notation:
-                # User provides game notation
                 self.move_history = self.parse_raw_san(user_input)
-                #self.add_to_chat("You", user_input)
                 self.awaiting_game_notation = False
                 self.awaiting_orientation = True
                 return
             if self.awaiting_orientation:
-            # Set side and prepare analysis
                 if user_input.upper() not in ("W", "B"):
                     self.add_to_chat("Coach", "Please enter W for White or B for Black.")
                     return
                 self.side = chess.WHITE if user_input.upper() == "W" else chess.BLACK
-                self.orientation = chess.WHITE if self.side == "W" else chess.BLACK
-                self.add_to_chat("You", user_input)
+                self.orientation = self.side
                 self.add_to_chat("Coach", "Starting analysis...")
-                self.prepare_analysis()
+                self.awaiting_orientation = False
+                threading.Thread(target=self.prepare_analysis).start()
                 return
 
-            if self.awaiting_best_move: #here we need to have a parser
+            if self.awaiting_best_move:
                 user_move = user_input.strip()
                 if user_move.lower() == "answer":
-                    self.add_to_chat("Coach", f"The best move is: {self.curr_best_move}")
+                    self.add_to_chat("Coach", f"Correct! Good job finding the best move!")
                     self.awaiting_best_move = False
-                    self.continue_analysis()
-                elif user_move in self.board.legal_moves:
+                    #threading.Thread(target=self.continue_analysis).start()
+                    threading.Thread(target=self.analysis_walkthrough).start()
+                elif chess.Move.from_uci(user_move) in self.board.legal_moves:
                     if user_move == self.curr_best_move:
                         self.add_to_chat("Coach", "Correct! Let's continue the analysis.")
                         self.awaiting_best_move = False
-                        self.continue_analysis()
+                        #threading.Thread(target=self.continue_analysis).start()
+                        threading.Thread(target=self.analysis_walkthrough).start()
                     else:
                         self.add_to_chat("Coach", "That's not the best move. Try again, or type 'answer' to reveal it.")
                 else:
                     self.add_to_chat("Coach", "Invalid move. Try again or type 'answer' to reveal the best move.")
                 return
 
-        # Pass questions to LLM
-        else:
-            self.add_to_chat("You", user_input)
-            self.add_to_chat("Coach", self.get_llm_response(user_input))
-
     def parse_raw_san(self, notation):
-        # Split the notation into lines or space-separated chunks
         moves = notation.split()
-        result = []
-        # Iterate over the moves, skipping numbers
-        for move in moves:
-            if not move.endswith('.'):  # Ignore move numbers like '1.'
-                result.append(move)
-        return result
+        return [move for move in moves if not move.endswith('.')]
 
     def prepare_analysis(self):
-        # Initialize the engine and process moves
-        
-        self.engine = Stockfish(path="C:\\Users\\wei0c\\Desktop\\school\\7-1\\CS-6320-NLP\\stockfish\\stockfish-windows-x86-64-avx2.exe", depth = 15, parameters ={"Hash": 2048, "Skill Level": 20, "Threads": 2, "Minimum Thinking Time": 3, "UCI_Chess960": "false"})
-        #self.move_history = self.game_notation.split(" ")
-        #self.add_to_chat("joe", self.move_history)
-        self.uci_notation = [] 
+        self.engine = Stockfish(
+            path="C:\\Users\\wei0c\\Desktop\\school\\7-1\\CS-6320-NLP\\stockfish\\stockfish-windows-x86-64-avx2.exe",
+            depth=15,
+            parameters={"Hash": 2048, "Skill Level": 20, "Threads": 3, "Minimum Thinking Time": 4, "UCI_Chess960": "false"}
+        )
+        self.uci_notation = []
         for san in self.move_history:
             move = self.board.parse_san(san)
             uci_move = move.uci()
-            #print(uci_move)
             self.board.push(move)
             self.uci_notation.append(uci_move)
         self.curr_moves = []
-
-        # Start analyzing moves
-        self.board.reset()
-        self.analysis_walkthrough()
+        #self.board.reset()
+        threading.Thread(target=self.analysis_walkthrough).start()
 
     def analysis_walkthrough(self):
-        #self.board.reset()
-        for move_idx, uci_move in enumerate(self.uci_notation[len(self.curr_moves):]): #for some reason it is going straight to the end
-            # Add the move to the current list and update the board
+        self.board.reset()
+        for move_idx, uci_move in enumerate(self.uci_notation[len(self.curr_moves):]):
             self.curr_moves.append(uci_move)
-            self.engine.set_position(self.curr_moves) #this is not right
+            self.engine.set_position(self.curr_moves)
             self.board.push_uci(uci_move)
-            time.sleep(2)
+            self.update_board()
+            time.sleep(0.2) #can play with this
+
             if (self.side == chess.WHITE and move_idx % 2 == 1) or (self.side == chess.BLACK and move_idx % 2 == 0):
                 continue
 
@@ -135,19 +121,16 @@ class ChessApp(QWidget):
             curr_eval = self.engine.get_evaluation()
             player_move_eval = [curr_eval["type"], curr_eval["value"]]
 
-            # Check for a blunder
-            if curr_best_move_eval[0] != player_move_eval[0] or abs(curr_best_move_eval[1] - player_move_eval[1]) > 100:  # Blunder threshold
+            if curr_best_move_eval[0] != player_move_eval[0] or abs(curr_best_move_eval[1] - player_move_eval[1]) > 25: #play w this
                 self.curr_best_move = best_move
-                self.add_to_chat("Coach", "Here you made a blunder, can you find the best move?")
+                self.add_to_chat("Coach", "Here you made a blunder, can you find the best move?") #need to move the piece back and update the board (remove the move from move list)
                 self.awaiting_best_move = True
                 break
 
-
-    def load_random_puzzle(self): #eventually sort by elo, let user report elo to start
+    def load_random_puzzle(self):
         idx = random.randint(0, len(self.puzzles_df) - 1)
         self.fen = self.puzzles_df.iloc[idx]['FEN']
         self.correct_puzzle_moves = self.puzzles_df.iloc[idx]['Moves'].split(" ")
-        print(self.correct_puzzle_moves)
         self.current_move_index = 0
         self.move_history = []
         self.current_history_index = 0
@@ -157,19 +140,21 @@ class ChessApp(QWidget):
         self.orientation = chess.BLACK if self.is_white_to_move else chess.WHITE
 
     def start_bot_game(self):
-        self.white = random.randint(0, 10) % 2            
-        sf = Stockfish(path = "C:\\Users\\wei0c\\Desktop\\school\\7-1\\CS-6320-NLP\\stockfish\\stockfish-windows-x86-64-avx2.exe", depth = 10, parameters ={"Hash": 2048, "UCI_Elo": "1800", "Threads": 2, "Minimum Thinking Time": 3, "UCI_Chess960": "false"})
+        self.white = random.randint(0, 10) % 2
+        self.engine = Stockfish(
+            path="C:\\Users\\wei0c\\Desktop\\school\\7-1\\CS-6320-NLP\\stockfish\\stockfish-windows-x86-64-avx2.exe",
+            depth=10,
+            parameters={"Hash": 2048, "UCI_Elo": "1800", "Threads": 2, "Minimum Thinking Time": 3, "UCI_Chess960": "false"}
+        )
         self.board = chess.Board()
-        self.engine = sf
         self.last_move = None
         self.is_white_to_move = True
 
         self.move_history = []
-        if self.white == 1:
-            self.orientation = chess.WHITE
-        else:
-            self.orientation = chess.BLACK
-            #self.engine_move()
+        self.orientation = chess.WHITE if self.white else chess.BLACK
+
+        if not self.white:
+            threading.Thread(target=self.engine_move).start()
 
     def initUI(self):
         self.setWindowTitle("Chess Game" if self.mode == "bot" else "Chess Analysis")
@@ -251,7 +236,7 @@ class ChessApp(QWidget):
         
         self.move_input = QTextEdit()
         self.move_input.setMaximumHeight(60)
-        self.move_input.setPlaceholderText("Enter your move (e.g., e4 or Nf3)...")
+        self.move_input.setPlaceholderText("Enter your move (e.g., e2e4)...")
         self.move_input.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #ddd;
