@@ -9,6 +9,8 @@ import chess.svg
 from stockfish import Stockfish
 import time
 
+#TODO WHEN BLUNDER MOVE BACK AND THEN WHEN CORRECT MOVE, PUSH AND THEN 
+#figure out why it doesnt continue afte you get a move right
 class ChessApp(QWidget):
     def __init__(self, puzzles_df=None, mode="puzzle"):
         super().__init__()
@@ -41,6 +43,7 @@ class ChessApp(QWidget):
         self.game_notation = None
         self.side = None
         self.curr_moves = []
+        self.moves_analyzed = 0
 
     def handle_chat_input(self, user_input):
         if self.mode == "analysis":
@@ -63,13 +66,13 @@ class ChessApp(QWidget):
             if self.awaiting_best_move:
                 user_move = user_input.strip()
                 if user_move.lower() == "answer":
-                    self.add_to_chat("Coach","best move :"+str(self.curr_best_move))
+                    self.add_to_chat("Coach", f"The best move here is {self.curr_best_move}")
                     self.awaiting_best_move = False
                     #threading.Thread(target=self.continue_analysis).start()
                     threading.Thread(target=self.analysis_walkthrough).start()
                 elif chess.Move.from_uci(user_move) in self.board.legal_moves:
                     if user_move == self.curr_best_move:
-                        self.add_to_chat("Coach", "Correct! Let's continue the analysis.")
+                        self.add_to_chat("Coach", f"Correct! Good job finding the best move!")
                         self.awaiting_best_move = False
                         #threading.Thread(target=self.continue_analysis).start()
                         threading.Thread(target=self.analysis_walkthrough).start()
@@ -85,8 +88,7 @@ class ChessApp(QWidget):
 
     def prepare_analysis(self):
         self.engine = Stockfish(
-            path=r"C:\Users\Sujay\Downloads\stockfish-windows-x86-64-avx2\stockfish\stockfish-windows-x86-64-avx2.exe",
-            #"C:\\Users\\wei0c\\Desktop\\school\\7-1\\CS-6320-NLP\\stockfish\\stockfish-windows-x86-64-avx2.exe",
+            path="C:\\Users\\wei0c\\Desktop\\school\\7-1\\CS-6320-NLP\\stockfish\\stockfish-windows-x86-64-avx2.exe",
             depth=15,
             parameters={"Hash": 2048, "Skill Level": 20, "Threads": 3, "Minimum Thinking Time": 4, "UCI_Chess960": "false"}
         )
@@ -97,34 +99,44 @@ class ChessApp(QWidget):
             self.board.push(move)
             self.uci_notation.append(uci_move)
         self.curr_moves = []
-        #self.board.reset()
         threading.Thread(target=self.analysis_walkthrough).start()
 
     def analysis_walkthrough(self):
         self.board.reset()
+        last_move = None
         for move_idx, uci_move in enumerate(self.uci_notation[len(self.curr_moves):]):
+            move_number = move_idx // 2 + 1
+            best_move = self.engine.get_best_move()
+            self.curr_moves.append(best_move)
+            best_move_eval = self.engine.get_evaluation()
+            curr_best_move_eval = [best_move_eval["type"], best_move_eval["value"]]
             self.curr_moves.append(uci_move)
             self.engine.set_position(self.curr_moves)
+
+            if move_idx % 2 == 0:
+                self.move_list.addItem(f"{move_number}. {self.board.san(chess.Move.from_uci(uci_move))}")
+            else:
+                current_row = self.move_list.count() - 1
+                if current_row >= 0:  # Check if there are any items
+                    last_item = self.move_list.item(current_row)
+                    if last_item:  # Check if we got an item
+                        last_item.setText(f"{last_item.text()} {self.board.san(chess.Move.from_uci(uci_move))}")
             self.board.push_uci(uci_move)
             self.update_board()
+            self.moves_analyzed += 1
+            self.current_history_index = self.moves_analyzed
             time.sleep(0.2) #can play with this
 
             if (self.side == chess.WHITE and move_idx % 2 == 1) or (self.side == chess.BLACK and move_idx % 2 == 0):
                 continue
 
-            best_move = self.engine.get_best_move()
-            self.curr_moves.append(best_move)
-            best_move_eval = self.engine.get_evaluation()
-            curr_best_move_eval = [best_move_eval["type"], best_move_eval["value"]]
-            self.curr_moves.pop()
-            self.curr_moves.append(uci_move)
-            self.engine.set_position(self.curr_moves)
             curr_eval = self.engine.get_evaluation()
             player_move_eval = [curr_eval["type"], curr_eval["value"]]
 
-            if curr_best_move_eval[0] != player_move_eval[0] or abs(curr_best_move_eval[1] - player_move_eval[1]) > 25: #play w this
+            if curr_best_move_eval[0] != player_move_eval[0] or abs(curr_best_move_eval[1] - player_move_eval[1]) > 15: #play w this
                 self.curr_best_move = best_move
                 self.add_to_chat("Coach", "Here you made a blunder, can you find the best move?") #need to move the piece back and update the board (remove the move from move list)
+                self.add_to_chat("Joe", f"{best_move}")
                 self.awaiting_best_move = True
                 break
 
@@ -143,8 +155,7 @@ class ChessApp(QWidget):
     def start_bot_game(self):
         self.white = random.randint(0, 10) % 2
         self.engine = Stockfish(
-            path=r"C:\Users\Sujay\Downloads\stockfish-windows-x86-64-avx2\stockfish\stockfish-windows-x86-64-avx2.exe",
-                 #"C:\\Users\\wei0c\\Desktop\\school\\7-1\\CS-6320-NLP\\stockfish\\stockfish-windows-x86-64-avx2.exe",
+            path="C:\\Users\\wei0c\\Desktop\\school\\7-1\\CS-6320-NLP\\stockfish\\stockfish-windows-x86-64-avx2.exe",
             depth=10,
             parameters={"Hash": 2048, "UCI_Elo": "1800", "Threads": 2, "Minimum Thinking Time": 3, "UCI_Chess960": "false"}
         )
@@ -238,7 +249,7 @@ class ChessApp(QWidget):
         
         self.move_input = QTextEdit()
         self.move_input.setMaximumHeight(60)
-        self.move_input.setPlaceholderText("Enter your move (e.g., e2e4)...")
+        self.move_input.setPlaceholderText("Enter your move (e.g., e4, Nc3)...")
         self.move_input.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #ddd;
@@ -343,6 +354,7 @@ class ChessApp(QWidget):
             self.add_to_chat("Coach", "Here is a random puzzle, feel free to ask me any questions!")
         else:
             self.add_to_chat("Coach", "I see you want to put your skills to the test. As you coach, you can still ask me questions any time.")
+    
     def process_move(self):
         move_text = self.move_input.toPlainText().strip()
         if not move_text:
@@ -357,7 +369,7 @@ class ChessApp(QWidget):
             else:
                 self.add_to_chat("System", "That move is not legal. Please try again.")
         except ValueError:
-            self.add_to_chat("System", "Invalid move format. Please use UCI (e.g., 'e2e4' or 'b1c3')")
+            self.add_to_chat("System", "Invalid move format. Please use SAN (e.g., 'e4' or 'Nc3')") #might change to prompt user to give moves in UCI
 
     def process_chat(self):
         chat_text = self.chat_input.toPlainText().strip()
@@ -390,22 +402,22 @@ class ChessApp(QWidget):
                 self.add_to_chat("System", "Game Over!")
                 self.submit_button.setEnabled(False)
 
-    def make_move(self, move, move_san):
+    def make_move(self, move, move_uci): #this might be san lol
         # Handle move list display
         move_number = len(self.move_history) // 2 + 1
         if self.is_white_to_move:
             # White's move - add new row
-            self.move_list.addItem(f"{move_number}. {move_san}")
+            self.move_list.addItem(f"{move_number}. {self.board.san(chess.Move.from_uci(move_uci))}")
         else:
             # Black's move - append to existing row
             current_row = self.move_list.count() - 1
             if current_row >= 0:  # Check if there are any items
                 last_item = self.move_list.item(current_row)
                 if last_item:  # Check if we got an item
-                    last_item.setText(f"{last_item.text()} {move_san}")
+                    last_item.setText(f"{last_item.text()} {self.board.san(chess.Move.from_uci(move_uci))}")
             else:
                 # Handle rare case where black moves first (in some puzzles)
-                self.move_list.addItem(f"{move_number}... {move_san}")
+                self.move_list.addItem(f"{move_number}... {self.board.san(chess.Move.from_uci(move_uci))}")
             
         # Update board state
         self.board.push(move)
@@ -437,6 +449,11 @@ class ChessApp(QWidget):
                     messages=messages
                 )
         return response.choices[0].message.content
+
+    def get_transformer_response(self):
+        
+        response = "" #call transformer here
+        return 
 
     def engine_move(self):
         if not self.is_white_to_move:
@@ -481,7 +498,20 @@ class ChessApp(QWidget):
         return "White to move" if self.is_white_to_move else "Black to move"
 
     def go_back(self):
-        if self.current_history_index > 0:
+        if self.mode == "analysis":
+            def back_thread():
+                with self.thread_lock:
+                    try:
+                        self.current_history_index -= 1
+                        self.board.pop()
+                        self.last_move = self.board.peek() if self.board.move_stack else None
+                        self.is_white_to_move = self.board.turn
+                        self.update_board()
+                    except Exception as e:
+                        self.add_to_chat("System", f"Error during back operation: {e}")
+            if self.current_history_index > 0:
+                threading.Thread(target=back_thread).start()
+        elif self.current_history_index > 0:
             self.current_history_index -= 1
             self.board.pop()
             self.last_move = self.board.peek() if self.board.move_stack else None
@@ -495,7 +525,21 @@ class ChessApp(QWidget):
             self.turn_label.setText(self.get_turn_message())
 
     def go_forward(self):
-        if self.current_history_index < len(self.move_history):
+        if self.mode == "analysis":
+            def forward_thread():
+                with self.thread_lock:
+                    try:
+                        move = self.board.parse_san(self.move_history[self.current_history_index])
+                        self.board.push(move)
+                        self.last_move = move
+                        self.current_history_index += 1
+                        self.is_white_to_move = self.board.turn
+                        self.update_board()
+                    except Exception as e:
+                        self.add_to_chat("System", f"Error during forward operation: {e}")
+            if self.current_history_index < self.moves_analyzed:
+                threading.Thread(target=forward_thread).start()
+        elif self.current_history_index < len(self.move_history):
             move = self.move_history[self.current_history_index]
             self.board.push(move)
             self.last_move = move
@@ -526,7 +570,6 @@ class ChessApp(QWidget):
             self.back_button.setEnabled(False)
             self.forward_button.setEnabled(False)
 
-            # Add system message about new puzzle
             self.add_to_chat("System", "New puzzle loaded! Make your first move.")
 
             QTimer.singleShot(1000, self.computer_move)
