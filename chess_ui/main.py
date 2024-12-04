@@ -1,21 +1,30 @@
-import pandas as pd
+import os
 import sys
+
+import pandas as pd
 from PyQt6.QtWidgets import QApplication
-from add_threading import ChessApp
+from dotenv import load_dotenv
+from stockfish import Stockfish
+
+from chess_ui.chess_home import ChessHomePageUI
+from trainer.chess_coach import ChessCoach
+
+
+def main():
+    load_dotenv()
+
+    app = QApplication(sys.argv)
+    puzzle_data = pd.read_csv('lichess_puzzles.csv.zst')
+    coach = ChessCoach(
+        stockfish=Stockfish(r"C:\stockfish\stockfish-windows-x86-64-avx2.exe"),
+        openai_api_key=os.getenv("OPENAI_API_KEY"),
+        openai_model="gpt-4o-mini",
+        chess_model="Waterhorse/chessgpt-chat-v1"
+    )
+    home_page = ChessHomePageUI(puzzle_data, coach)
+    home_page.show()
+    sys.exit(app.exec())
+
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-
-    if len(sys.argv) != 2: #change this later to take in diff lengths, and diff bots
-        print("Missing an argument!")
-        exit()
-    elif sys.argv[1] == "bot":
-        window = ChessApp(mode="bot")
-    elif sys.argv[1] == "analysis":
-        window = ChessApp(mode = "analysis")
-    else:
-        puzzles_df = pd.read_csv("C:\\Users\\wei0c\\Desktop\\school\\7-1\\CS-6320-NLP\\lichess_db_puzzle.csv")
-        window = ChessApp(puzzles_df, mode="puzzle")
-
-    window.show()
-    sys.exit(app.exec())
+    main()
