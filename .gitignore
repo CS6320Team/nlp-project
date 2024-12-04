@@ -167,5 +167,7 @@ saved_files/
 logs/
 outputs/
 chess_commentary_model/
+chess_model/
 init_data/
 *.ckpt
+/chess_ui/lichess_puzzles.csv.zst
