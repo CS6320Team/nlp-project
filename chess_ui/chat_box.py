@@ -1,17 +1,26 @@
 import threading
 
 import chess
+from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QHBoxLayout, QLineEdit, QPushButton
 
-from chess_ui.chess_gui import ChessGUI, InputHandler
+
+class InputHandler(QObject):
+    input_received = pyqtSignal(str)
+
+    def __init__(self):
+        super().__init__()
+        self.user_input = None
 
 
 class ChatBox(QWidget):
-    def __init__(self, parent: ChessGUI):
+
+    def __init__(self, parent):
+        from chess_ui.chess_gui import ChessGUI
         super().__init__(parent)
 
-        self.coach = parent.coach
-        self.parent = parent
+        self.parent: ChessGUI = parent
+        self.coach = self.parent.coach
         self.input_handler = InputHandler()
 
         # Layout

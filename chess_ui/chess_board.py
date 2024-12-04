@@ -8,17 +8,16 @@ from PyQt6.QtGui import QPainter
 from PyQt6.QtSvg import QSvgRenderer
 from PyQt6.QtWidgets import QWidget
 
-from chess_ui.chess_gui import ChessGUI
-
-
 class ChessBoard(QWidget):
-    def __init__(self, parent: ChessGUI):
+    def __init__(self, parent):
+        from chess_ui.chess_gui import ChessGUI
+
         super().__init__(parent)
         self.blunder = None
         self.board = chess.Board()
         self.selected_square = None
         self.possible_moves = []
-        self.parent = parent
+        self.parent: ChessGUI = parent
         self.previous_fen = self.board.fen()
 
         self.setSizePolicy(

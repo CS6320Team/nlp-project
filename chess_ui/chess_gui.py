@@ -2,20 +2,12 @@ import threading
 import time
 
 import chess
-from PyQt6.QtCore import Qt, QEventLoop, QObject, pyqtSignal
+from PyQt6.QtCore import Qt, QEventLoop
 from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QSplitter, QLabel, QVBoxLayout, QListWidget, QPushButton
 
 from chess_ui.chat_box import ChatBox
 from chess_ui.chess_board import ChessBoard
 from trainer.chess_coach import ChessCoach
-
-
-class InputHandler(QObject):
-    input_received = pyqtSignal(str)
-
-    def __init__(self):
-        super().__init__()
-        self.user_input = None
 
 
 class ChessGUI(QMainWindow):
