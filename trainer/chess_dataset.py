@@ -1,61 +1,38 @@
 import os
 
-from torch.utils.data import Dataset
+from datasets import DatasetDict, Dataset
 
 
-class T5ChessDataset(Dataset):
-    def __init__(self,
-                 data_dir: str,
-                 data_type: str,
-                 tokenizer,
-                 max_input: int = 544,
-                 max_output: int = 256,
-                 prefix: str = "Generate commentary: "):
+def load_dataset(data_dir: str, data_format: str) -> DatasetDict:
+    if data_format not in ['multi', 'single']:
+        raise ValueError(f"Invalid data format: {data_format}")
 
-        self.tokenizer = tokenizer
-        self.max_input = max_input
-        self.max_output = max_output
+    data_dict = {}
+    for data_type in ['train', 'valid', 'test']:
+        input_file = os.path.join(data_dir, f"{data_type}.che-eng.{data_format}.che")
+        label_file = os.path.join(data_dir, f"{data_type}.che-eng.{data_format}.en")
 
-        if data_type not in {'train', 'valid', 'test'}:
-            raise ValueError(f"Invalid data type: {data_type}")
+        if not os.path.exists(input_file) or not os.path.exists(label_file):
+            raise ValueError(f"Data files not found for data type: {data_type} and format: {data_format}")
 
-        input_file = os.path.join(data_dir, f"{data_type}.che-eng.multi.che")
-        target_file = os.path.join(data_dir, f"{data_type}.che-eng.multi.en")
+        with open(input_file, 'r', encoding='utf-8') as f_in, open(label_file, 'r', encoding='utf-8') as f_lbl:
+            inputs = f_in.read().splitlines()
+            labels = f_lbl.read().splitlines()
 
-        if not os.path.exists(input_file) or not os.path.exists(target_file):
-            raise ValueError(f"Data files not found for data type: {data_type}")
+        assert len(inputs) == len(labels), "Input and label files have different lengths!"
 
-        with open(input_file, "r") as f:
-            self.input_texts = [prefix + line.strip() for line in f.readlines()]
+        data_dict[data_type] = Dataset.from_dict({
+            'moves': inputs,
+            'commentary': labels
+        })
 
-        with open(target_file, "r") as f:
-            self.target_texts = [line.strip() for line in f.readlines()]
+    return DatasetDict(data_dict)
 
-        if len(self.input_texts) != len(self.target_texts):
-            raise ValueError("Input and target text files have different lengths.")
 
-    def __len__(self):
-        return len(self.input_texts)
-
-    def __getitem__(self, idx):
-        inputs = self.tokenizer(
-            self.input_texts[idx],
-            max_length=self.max_input,
-            padding='max_length',
-            truncation=True,
-            return_tensors='pt'
-        )
-
-        targets = self.tokenizer(
-            self.target_texts[idx],
-            max_length=self.max_output,
-            padding='max_length',
-            truncation=True,
-            return_tensors='pt'
-        )
-
-        return {
-            'input_ids': inputs['input_ids'].squeeze(),
-            'attention_mask': inputs['attention_mask'].squeeze(),
-            'labels': targets['input_ids'].squeeze()
-        }
+def sample_dataset(data_set: DatasetDict, sample_percentage: float) -> DatasetDict:
+    if sample_percentage <= 0 or sample_percentage > 1:
+        raise ValueError(f"Invalid sample percentage: {sample_percentage}")
+    sampled_data = {}
+    for data_type in data_set.keys():
+        sampled_data[data_type] = data_set[data_type].train_test_split(train_size=sample_percentage)['train']
+    return DatasetDict(sampled_data)
