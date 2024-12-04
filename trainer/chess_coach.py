@@ -1,22 +1,21 @@
 import json
 import os
-from typing import Dict, Any
+from typing import Dict
 
 import chess
-import stockfish
 import torch
-from dotenv import load_dotenv
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
+from stockfish import Stockfish
 from transformers import AutoTokenizer, AutoModelForCausalLM, PreTrainedModel
 
 
 class ChessCoach:
-    def __init__(self, stockfish_path: str, openai_api_key: str, openai_model: str, chess_model: str):
+    def __init__(self, stockfish: Stockfish, openai_api_key: str, openai_model: str, chess_model: str):
         os.environ["OPENAI_API_KEY"] = openai_api_key
 
-        self.stockfish = stockfish.Stockfish(path=stockfish_path)
+        self.stockfish = stockfish
 
         # Initialize OpenAI models (#todo: could prob just use 1)
         self.classification_llm = ChatOpenAI(model=openai_model)
@@ -80,18 +79,20 @@ class ChessCoach:
                 "context": user_input
             }
 
-    def generate_commentary(self, board_fen: str, prev_board_fen: str) -> str:
+    def generate_commentary(self, board_fen: str, prev_board_fen: str, move: str) -> str:
         input_text = (
-            f"An insightful and helpful Chess Assistant giving commentary on chess moves through FEN notation.<|endoftext|>"
+            f"An insightful chess commentator observing chess game between two players and making commentary by looking at current and previous state of chess board fen notation.<|endoftext|>"
             f"Current FEN: {board_fen}<|endoftext|>"
             f"Previous FEN: {prev_board_fen}<|endoftext|>"
-            f"Commentary: ")
+            f"Move made: {move}<|endoftext|>"
+            f"Chess Commentator's commentary: "
+        )
 
         inputs = self.commentary_tokenizer(input_text, return_tensors='pt').to(self.chess_model.device)
         input_length = inputs.input_ids.shape[1]
 
         outputs = self.chess_model.generate(
-            **inputs, max_new_tokens=256, do_sample=True, temperature=0.7, top_p=0.7, top_k=50,
+            **inputs, max_new_tokens=96, do_sample=True, temperature=0.7, top_p=0.7, top_k=50,
             return_dict_in_generate=True,
             pad_token_id=self.commentary_tokenizer.eos_token_id,
         )
@@ -100,8 +101,17 @@ class ChessCoach:
         token = outputs.sequences[0, input_length:]
         commentary = self.commentary_tokenizer.decode(token, skip_special_tokens=True)
 
-        # todo: refine commentary
-
+        refine_prompt = ChatPromptTemplate.from_messages([
+            SystemMessage(
+                content="You are a chess AI assistant. You will be given a chess commentary, board states, and moves."
+                        "Refine the commentary to be more insightful and engaging. "
+                        "Respond with 75 words or less."),
+            HumanMessage(content=f"Current FEN: {board_fen}. "
+                                 f"Previous FEN: {prev_board_fen}. "
+                                 f"Move made: {move}. "
+                                 f"Commentary: {commentary}")
+        ])
+        commentary = self.refinement_llm.invoke(refine_prompt.messages).content
         return commentary
 
     def get_best_move(self, board_fen: str) -> str:
@@ -116,95 +126,42 @@ class ChessCoach:
 
         return best_move
 
-    def process_user_input(self, user_input: str) -> Dict[str, Any]:
-        """
-        Main method to process user input and generate appropriate response
-        """
-        # Classify input
-        classification = self.classify_input(user_input)
+    def process_make_move(self, fen, context: str, turn: str) -> chess.Move | None:
+        try:
+            # Attempt to make the move (# todo: use chess model (openai responds with something like "User wans to move ther pawn to e4, needs to be converted to UCI based on current board state"))
 
-        # Current board FEN for context
-        current_board_fen = self.board.fen()
-
-        # Process based on classification type
-        if classification['type'] == 'make_move':
-            try:
-                # Attempt to make the move (# todo: use chess model (openai responds with something like "User wans to move ther pawn to e4, needs to be converted to UCI based on current board state"))
-
-                # Parse the move (#todo need to use chess model)
-                parse_prompt = ChatPromptTemplate.from_messages([
-                    SystemMessage(
-                        content=f"You are a chess AI assistant. You will be given current FEN string, Parse the next move to UCI format. Use standard chess notation"),
-                    HumanMessage(content=f"Make the move: {classification['context']}. "
-                                         f"Current Board Position: {current_board_fen}. "
-                                         f"Respond in strictly in UCI format / Standard Chess Notation.")
-                ])
-                response = self.classification_llm.invoke(parse_prompt.messages).content
-
-                move = chess.Move.from_uci(response)
-                if move in self.board.legal_moves:
-                    self.board.push(move)
-                    self.prev_board_fen = current_board_fen
-
-                    response = f"Move {move} executed successfully."
-                else:
-                    response = "Illegal move. Please try again."
-            except ValueError:
-                response = "Invalid move format. Use standard chess notation."
-        elif classification['type'] == 'give_insight':
-            # todo: ...
-            response = self.generate_commentary(current_board_fen, self.prev_board_fen)
-        elif classification['type'] == 'best_move':
-            best_move = self.get_best_move(current_board_fen)
-            response = f"Stockfish suggests the best move: {best_move}"
-        elif classification['type'] == 'ask_question':
-            # Refine question with board context # todo: use chess model instead of openai
-            question_prompt = ChatPromptTemplate.from_messages([
-                # todo: needs better system message
-                SystemMessage(content=f"Current Board Position: {current_board_fen}"),
-                HumanMessage(
-                    content=f"In 75 words on less, provide a chess-related answer to: {classification['context']}")
-            ])
-
-            response = self.refinement_llm.invoke(question_prompt.messages).content
-
-        else:  # general conversation (# todo: use chess model)
-            conversation_prompt = ChatPromptTemplate.from_messages([
+            # Parse the move (#todo need to use chess model)
+            parse_prompt = ChatPromptTemplate.from_messages([
                 SystemMessage(
-                    content="You are a chess AI assistant. Keep the conversation focused on chess. Respond with 75 words or less."),
-                HumanMessage(content=user_input)
+                    content=f"You are a chess AI assistant. You will be given current FEN string, Parse the next move to UCI format. Use standard chess notation"),
+                HumanMessage(content=f"Parse the move: {context}. "
+                                     f"Current Board Position (FEN Notation): {fen}. "
+                                     f"It is {turn}'s turn to move."
+                                     f"Respond in strictly in UCI format with chess move and nothing else.")
             ])
-            response = self.refinement_llm.invoke(conversation_prompt.messages).content
+            response = self.classification_llm.invoke(parse_prompt.messages).content
+            move = chess.Move.from_uci(response)
+            return move
+        except ValueError:
+            return None
 
-        return {
-            "type": classification['type'],
-            "response": response
-        }
+    def process_question(self, current_fen, context: str, user: str, elo: int) -> str:
+        question_prompt = ChatPromptTemplate.from_messages([
+            # todo: use commentary as context
+            SystemMessage(content=f"You are a chess expert and a coach. "
+                                  f"Your student is {user} with an ELO rating of {elo}. "
+                                  f"Current Board Position: {current_fen}"),
+            HumanMessage(
+                content=f"In 75 words on less, provide a chess-related answer to: '{context}' based on the current board position.")
+        ])
+        response = self.refinement_llm.invoke(question_prompt.messages).content
+        return response
 
-
-def main():
-    load_dotenv()
-
-    # todo: use config
-    assistant = ChessCoach(
-        stockfish_path="C:/stockfish/stockfish-windows-x86-64-avx2.exe",
-        openai_api_key=os.getenv("OPENAI_API_KEY"),
-        openai_model="gpt-4o-mini",
-        chess_model="Waterhorse/chessgpt-chat-v1"
-    )
-
-    player_name = input("Enter player name: ")
-    player_elo = int(input("Enter player ELO: "))
-
-    # Generate greeting
-    greeting = assistant.generate_greeting(player_name, player_elo)
-    print(greeting)
-
-    while True:
-        user_input = input("User: ")
-        response = assistant.process_user_input(user_input)
-        print("Chess Coach:" + response['response'])
-
-
-if __name__ == "__main__":
-    main()
+    def process_general_convo(self, user_input: str) -> str:
+        conversation_prompt = ChatPromptTemplate.from_messages([
+            SystemMessage(
+                content="You are a chess AI assistant. Keep the conversation focused on chess. Respond with 75 words or less."),
+            HumanMessage(content=user_input)
+        ])
+        response = self.refinement_llm.invoke(conversation_prompt.messages).content
+        return response
