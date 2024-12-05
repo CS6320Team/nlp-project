@@ -71,7 +71,7 @@ Ensure you have the following:
     pip install pandas PyQt6 python-dotenv stockfish chess langchain transformers zstandard
     ```
 
-5. Install additional tools for scraping and fine-tuning:
+5. _\[Optional\]_ Install additional tools for scraping and fine-tuning:
     ```bash
     pip install beautifulsoup4 playwright nltk lxml evaluate datasets sentencepiece rouge-score absl-py protobuf tensorboard
     playwright install chromium
