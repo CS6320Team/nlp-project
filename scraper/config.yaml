@@ -10,7 +10,7 @@ parse_output_dir: "./parsed_files"
 parse_error_path: "./parsed_files/parse_errors.txt"
 saved_links_path: "./init_data/links.json"
 split_data_path: "./init_data/split_data.json"
-start_state_path: "./init_data/start_state.json"
+start_state_path: "./start_state.json"
 
 # Index control
 start_index: 0  # Start from this index in URL list

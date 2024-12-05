@@ -1,0 +1,230 @@
+{
+  "moves": "",
+  "board": [
+    {
+      "piece": "white_rook",
+      "location": "a1"
+    },
+    {
+      "piece": "white_pawn",
+      "location": "a2"
+    },
+    {
+      "location": "a3"
+    },
+    {
+      "location": "a4"
+    },
+    {
+      "location": "a5"
+    },
+    {
+      "location": "a6"
+    },
+    {
+      "piece": "black_pawn",
+      "location": "a7"
+    },
+    {
+      "piece": "black_rook",
+      "location": "a8"
+    },
+    {
+      "piece": "white_knight",
+      "location": "b1"
+    },
+    {
+      "piece": "white_pawn",
+      "location": "b2"
+    },
+    {
+      "location": "b3"
+    },
+    {
+      "location": "b4"
+    },
+    {
+      "location": "b5"
+    },
+    {
+      "location": "b6"
+    },
+    {
+      "piece": "black_pawn",
+      "location": "b7"
+    },
+    {
+      "piece": "black_knight",
+      "location": "b8"
+    },
+    {
+      "piece": "white_bishop",
+      "location": "c1"
+    },
+    {
+      "piece": "white_pawn",
+      "location": "c2"
+    },
+    {
+      "location": "c3"
+    },
+    {
+      "location": "c4"
+    },
+    {
+      "location": "c5"
+    },
+    {
+      "location": "c6"
+    },
+    {
+      "piece": "black_pawn",
+      "location": "c7"
+    },
+    {
+      "piece": "black_bishop",
+      "location": "c8"
+    },
+    {
+      "piece": "white_queen",
+      "location": "d1"
+    },
+    {
+      "piece": "white_pawn",
+      "location": "d2"
+    },
+    {
+      "location": "d3"
+    },
+    {
+      "location": "d4"
+    },
+    {
+      "location": "d5"
+    },
+    {
+      "location": "d6"
+    },
+    {
+      "piece": "black_pawn",
+      "location": "d7"
+    },
+    {
+      "piece": "black_queen",
+      "location": "d8"
+    },
+    {
+      "piece": "white_king",
+      "location": "e1"
+    },
+    {
+      "piece": "white_pawn",
+      "location": "e2"
+    },
+    {
+      "location": "e3"
+    },
+    {
+      "location": "e4"
+    },
+    {
+      "location": "e5"
+    },
+    {
+      "location": "e6"
+    },
+    {
+      "piece": "black_pawn",
+      "location": "e7"
+    },
+    {
+      "piece": "black_king",
+      "location": "e8"
+    },
+    {
+      "piece": "white_bishop",
+      "location": "f1"
+    },
+    {
+      "piece": "white_pawn",
+      "location": "f2"
+    },
+    {
+      "location": "f3"
+    },
+    {
+      "location": "f4"
+    },
+    {
+      "location": "f5"
+    },
+    {
+      "location": "f6"
+    },
+    {
+      "piece": "black_pawn",
+      "location": "f7"
+    },
+    {
+      "piece": "black_bishop",
+      "location": "f8"
+    },
+    {
+      "piece": "white_knight",
+      "location": "g1"
+    },
+    {
+      "piece": "white_pawn",
+      "location": "g2"
+    },
+    {
+      "location": "g3"
+    },
+    {
+      "location": "g4"
+    },
+    {
+      "location": "g5"
+    },
+    {
+      "location": "g6"
+    },
+    {
+      "piece": "black_pawn",
+      "location": "g7"
+    },
+    {
+      "piece": "black_knight",
+      "location": "g8"
+    },
+    {
+      "piece": "white_rook",
+      "location": "h1"
+    },
+    {
+      "piece": "white_pawn",
+      "location": "h2"
+    },
+    {
+      "location": "h3"
+    },
+    {
+      "location": "h4"
+    },
+    {
+      "location": "h5"
+    },
+    {
+      "location": "h6"
+    },
+    {
+      "piece": "black_pawn",
+      "location": "h7"
+    },
+    {
+      "piece": "black_rook",
+      "location": "h8"
+    }
+  ],
+  "comment": ""
+}

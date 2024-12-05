@@ -170,4 +170,4 @@ chess_commentary_model/
 chess_model/
 init_data/
 *.ckpt
-/chess_ui/lichess_puzzles.csv.zst
+/chess_ui/lichess_db_puzzle.csv.zst
