@@ -1,4 +1,4 @@
-# MAGNUS: AI-Powered Chess Assistant
+# MAGNUS: AI-Powered Chess Coach
 
 Masterful Analysis and Guidance for Navigating and Understanding Strategies: An AI-powered chess assistant that combines Stockfish, NLP, and LangChain to provide interactive gameplay, game
 analysis, and insightful commentary.
